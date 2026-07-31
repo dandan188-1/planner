@@ -290,6 +290,30 @@ ul{list-style:none}
 .toast{position:fixed;left:50%;bottom:calc(80px + var(--safe-bottom));transform:translateX(-50%) translateY(20px);background:rgba(32,33,36,.92);color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;z-index:999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* 新闻详情弹层 */
+.detail-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;
+  opacity:0;visibility:hidden;transition:.25s;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.detail-mask.open{opacity:1;visibility:visible}
+.detail-sheet{
+  background:var(--card);width:100%;max-width:560px;max-height:85vh;
+  border-radius:18px 18px 0 0;display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  padding-bottom:var(--safe-bottom);
+}
+.detail-mask.open .detail-sheet{transform:translateY(0)}
+.detail-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 4px;flex-shrink:0}
+.detail-scroll{flex:1;overflow-y:auto;padding:6px 20px 16px;-webkit-overflow-scrolling:touch}
+.detail-title{font-size:19px;font-weight:700;line-height:1.4;margin-bottom:10px;color:var(--text)}
+.detail-meta{font-size:12px;color:var(--text-3);margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap}
+.detail-meta .tag{margin-right:0}
+.detail-content{font-size:15px;line-height:1.75;color:var(--text-2);white-space:pre-wrap}
+.detail-actions{flex-shrink:0;padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px}
+.detail-link{flex:1;text-align:center;padding:11px;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-size:14px;font-weight:500;text-decoration:none}
+.detail-close{padding:11px 20px;border-radius:var(--radius-sm);background:var(--bg);color:var(--text-2);font-size:14px;font-weight:500}
+
 /* 窄屏（手机）：左侧导航折叠为可滑出抽屉，菜单按钮切换 */
 @media(max-width:768px){
   .sidebar{
@@ -496,6 +520,22 @@ ul{list-style:none}
 </div><!-- /app-shell -->
 
 <div class="toast" id="toast"></div>
+
+<!-- 新闻详情弹层 -->
+<div class="detail-mask" id="detailMask">
+  <div class="detail-sheet" id="detailSheet">
+    <div class="detail-handle"></div>
+    <div class="detail-scroll">
+      <div class="detail-title" id="detailTitle"></div>
+      <div class="detail-meta" id="detailMeta"></div>
+      <div class="detail-content" id="detailContent"></div>
+    </div>
+    <div class="detail-actions">
+      <a class="detail-link" id="detailLink" href="#" target="_blank" rel="noopener">查看原文全文</a>
+      <button class="detail-close" id="detailClose">关闭</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -891,6 +931,7 @@ function fetchRSS(type,cb){
         merged=merged.concat((d.items||[]).map(it=>({
           title:stripHTML(it.title),
           desc:descBrief(it.description,60),
+          full:stripHTML(it.description),
           link:it.link,
           time:timeAgo(it.pubDate),
           source:src.name,
@@ -982,13 +1023,33 @@ function fetchMarket(cb){
   setTimeout(()=>finish(false),8000);
 }
 
+/* 新闻详情弹层 */
+function openDetail(idx,list){
+  const it=(list||[])[idx];
+  if(!it)return;
+  $('#detailTitle').textContent=it.title||'';
+  $('#detailMeta').innerHTML=`<span class="tag tag-blue">${it.source||'综合'}</span><span>${it.time||''}</span>`;
+  // 正文：优先用完整正文，没有则用摘要
+  const body=it.full||it.desc||'';
+  $('#detailContent').textContent=body||'（暂无详细内容）';
+  const link=$('#detailLink');
+  if(it.link){link.href=it.link;link.style.display='block';link.textContent='查看原文全文';}
+  else{link.style.display='none';}
+  $('#detailMask').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeDetail(){$('#detailMask').classList.remove('open');document.body.style.overflow='';}
+$('#detailClose').onclick=closeDetail;
+$('#detailMask').onclick=e=>{if(e.target.id==='detailMask')closeDetail();};
+
 function renderNews(){
   const now=new Date();
   $('#newsTime').textContent='加载中…';
   fetchRSS('news',data=>{
     const list=(data||NEWS_POOL).slice(0,12);
+    window.__newsList=list; // 供详情弹层调用
     $('#newsTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+'更新'+(data?' · 实时':' · 离线');
-    $('#newsList').innerHTML=list.map((it,i)=>`<div class="news-item">
+    $('#newsList').innerHTML=list.map((it,i)=>`<div class="news-item" data-idx="${i}" style="cursor:pointer">
       <div class="news-rank ${i===0?'r1':i===1?'r2':i===2?'r3':'rn'}">${i+1}</div>
       <div class="news-body">
         <div class="news-title">${it.title}</div>
@@ -996,6 +1057,7 @@ function renderNews(){
         <div class="news-meta"><span class="hot">🔥 热点</span><span>${it.source||'综合'}</span><span>${it.time||''}</span></div>
       </div>
     </div>`).join('');
+    $$('#newsList .news-item').forEach(el=>el.onclick=()=>openDetail(parseInt(el.dataset.idx),window.__newsList));
   });
 }
 $('#refreshNews').onclick=()=>{NEWS_CACHE.news.t=0;renderNews();toast('正在刷新热点…');};
@@ -1023,7 +1085,8 @@ function renderFinance(){
   // 财经要闻（真实RSS）
   fetchRSS('finance',data=>{
     const list=(data||FIN_NEWS_POOL).slice(0,10);
-    $('#finNews').innerHTML=list.map((it,i)=>`<div class="news-item">
+    window.__finList=list;
+    $('#finNews').innerHTML=list.map((it,i)=>`<div class="news-item" data-idx="${i}" style="cursor:pointer">
       <div class="news-rank ${i===0?'r1':i===1?'r2':i===2?'r3':'rn'}">${i+1}</div>
       <div class="news-body">
         <div class="news-title">${it.title}</div>
@@ -1031,6 +1094,7 @@ function renderFinance(){
         <div class="news-meta"><span class="tag tag-orange">${it.source||'财经'}</span><span>${it.time||''}</span></div>
       </div>
     </div>`).join('');
+    $$('#finNews .news-item').forEach(el=>el.onclick=()=>openDetail(parseInt(el.dataset.idx),window.__finList));
   });
 }
 $('#refreshFin').onclick=()=>{NEWS_CACHE.finance.t=0;MARKET_TIME=0;renderFinance();toast('正在刷新行情…');};
