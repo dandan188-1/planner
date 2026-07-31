@@ -841,109 +841,134 @@ function speak(text){
 }
 
 /* ============================================================
-   时事热点 & 财经热点（内置内容库 + 每日轮换）
+   时事热点 & 财经热点
+   - 新闻：实时抓取人民网 RSS（经 rss2json 转 JSON，支持浏览器跨域）
+   - 行情：国内接口有 CORS 限制，纯静态无法稳定获取，标注为"示例"
+   - 降级：网络失败时回退到内置内容池，保证离线可用
 ============================================================ */
-const NEWS_POOL=[
-  {t:'全国多地推进新型城镇化建设，提升城市宜居品质',d:'各地加快城市更新与公共服务设施建设，推进老旧小区改造和一刻钟便民生活圈，让城市生活更便利、更温暖。',hot:'9.2万'},
-  {t:'教育"双减"政策持续深化，课后服务覆盖率达98%',d:'各地中小学丰富课后服务内容，推动素质教育发展，学生学业负担明显减轻，家长满意度持续提升。',hot:'8.5万'},
-  {t:'我国新能源汽车产销量连续多年位居全球第一',d:'在技术创新和政策支持带动下，新能源汽车产业链日趋完善，出口量持续增长，自主品牌竞争力显著增强。',hot:'12万'},
-  {t:'医保跨省结算全面铺开，惠及数亿参保群众',d:'异地就医直接结算覆盖范围进一步扩大，门诊慢特病结算病种增加，群众看病报销更方便。',hot:'7.3万'},
-  {t:'全国铁路实施新列车运行图，运力进一步提升',d:'新增多条高铁线路开通运营，优化列车开行方案，缩短城市间时空距离，方便旅客出行。',hot:'6.1万'},
-  {t:'多地推进适老化改造，让老年人生活更便利',d:'社区加装电梯、家庭无障碍改造、智能设备辅助等举措，帮助老年群体跨越数字鸿沟、安享晚年。',hot:'5.8万'},
-  {t:'我国成功发射新一代载人飞船试验船',d:'航天技术取得新突破，为后续载人登月任务奠定基础，标志着航天强国建设迈出重要一步。',hot:'15万'},
-  {t:'国家出台措施促进民营经济发展壮大',d:'从市场准入、要素获取、法治保障等方面推出系列举措，提振民营企业发展信心，激发市场活力。',hot:'9.7万'},
-  {t:'多地高温预警，气象部门提醒做好防暑降温',d:'受副热带高压影响，部分地区气温突破历史极值，公众需注意防暑、减少户外活动。',hot:'11万'},
-  {t:'乡村振兴成效显著，农村居民收入持续增长',d:'特色农业、乡村旅游、电商助农等新业态蓬勃发展，农村人居环境改善，城乡差距进一步缩小。',hot:'6.5万'},
-  {t:'全国文化遗产保护利用取得新进展',d:'考古发掘成果丰硕，非遗传承焕发活力，博物馆热持续升温，传统文化走进更多人的生活。',hot:'4.8万'},
-  {t:'城市绿道建设提速，15分钟健身圈基本形成',d:'公园绿地、健身步道、社区体育设施不断完善，全民健身蔚然成风，健康生活方式深入人心。',hot:'5.2万'},
-  {t:'人工智能技术加速赋能千行百业',d:'AI在医疗、教育、制造、服务等领域应用深化，提升效率的同时也带来新的就业与伦理思考。',hot:'13万'},
-  {t:'全国安全生产形势持续稳定向好',d:'各地加强隐患排查整治，完善应急预案，安全生产责任体系不断健全，事故起数同比下降。',hot:'4.1万'},
-  {t:'我国5G基站总数突破400万个，覆盖率持续提升',d:'信息基础设施日益完善，5G应用深入生产生活场景，为数字经济发展提供有力支撑。',hot:'8.9万'},
-];
-function getTodayNews(){
-  const seed=dateSeed(todayStr());
-  const n=9;
-  const start=seed%NEWS_POOL.length;
-  let result=[];
-  for(let i=0;i<n;i++)result.push(NEWS_POOL[(start+i)%NEWS_POOL.length]);
-  return result;
-}
-function renderNews(){
-  const list=getTodayNews();
-  const now=new Date();
-  $('#newsTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+'更新';
-  $('#newsList').innerHTML=list.map((it,i)=>`<div class="news-item">
-    <div class="news-rank ${i===0?'r1':i===1?'r2':i===2?'r3':'rn'}">${i+1}</div>
-    <div class="news-body">
-      <div class="news-title">${it.t}</div>
-      <div class="news-desc">${it.d}</div>
-      <div class="news-meta"><span class="hot">🔥 ${it.hot}</span><span>综合报道</span></div>
-    </div>
-  </div>`).join('');
-}
-$('#refreshNews').onclick=()=>{renderNews();toast('热点已刷新');};
+const RSS2JSON='https://api.rss2json.com/v1/api.json?rss_url=';
+const RSS_SOURCES={
+  news:[
+    {url:'http://www.people.com.cn/rss/politics.xml',name:'人民网时政'},
+    {url:'http://www.people.com.cn/rss/world.xml',name:'人民网国际'},
+  ],
+  finance:[
+    {url:'http://www.people.com.cn/rss/finance.xml',name:'人民网财经'},
+  ]
+};
+// 缓存：避免频繁请求，10 分钟刷新一次
+const NEWS_CACHE={news:{data:null,t:0},finance:{data:null,t:0}};
+const CACHE_TTL=10*60*1000;
 
-// 财经
-const FIN_MARKET=[
-  {n:'上证指数',c:'000001',base:3289.45},
-  {n:'深证成指',c:'399001',base:10487.32},
-  {n:'创业板指',c:'399006',base:2089.67},
-  {n:'沪深300',c:'000300',base:3845.21},
-  {n:'恒生指数',c:'HSI',base:18234.56},
-  {n:'黄金(元/克)',c:'AU',base:568.30},
-  {n:'美元/人民币',c:'USDCNY',base:7.1834},
-  {n:'WTI原油(美元)',c:'OIL',base:78.56},
+function stripHTML(s){return(s||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();}
+function descBrief(s,n){s=stripHTML(s);return s.length>n?s.slice(0,n)+'…':s;}
+function timeAgo(pubDate){
+  try{const t=new Date(pubDate).getTime();const diff=Date.now()-t;const m=Math.floor(diff/60000);
+    if(m<1)return'刚刚';if(m<60)return m+'分钟前';
+    const h=Math.floor(m/60);if(h<24)return h+'小时前';
+    const d=Math.floor(h/24);if(d<7)return d+'天前';
+    // 超过7天显示具体日期
+    const dt=new Date(pubDate);
+    return(dt.getMonth()+1)+'月'+dt.getDate()+'日';
+  }catch(e){return'';}
+}
+// 抓取 RSS（带缓存），成功回调 data，失败回调 null
+function fetchRSS(type,cb){
+  const now=Date.now();
+  const c=NEWS_CACHE[type];
+  if(c.data&&now-c.t<CACHE_TTL){cb(c.data);return;}
+  const sources=RSS_SOURCES[type];
+  let pending=sources.length,merged=[];
+  let done=false;
+  sources.forEach(src=>{
+    const url=RSS2JSON+encodeURIComponent(src.url);
+    fetch(url).then(r=>r.json()).then(d=>{
+      if(d&&d.status==='ok'&&(d.items||[]).length){
+        merged=merged.concat((d.items||[]).map(it=>({
+          title:stripHTML(it.title),
+          desc:descBrief(it.description,60),
+          link:it.link,
+          time:timeAgo(it.pubDate),
+          source:src.name,
+          pub:it.pubDate||'',
+        })));
+      }
+    }).catch(()=>{}).then(()=>{
+      pending--;
+      if(pending===0&&!done){
+        done=true;
+        merged.sort((a,b)=>(b.pub||'').localeCompare(a.pub||''));
+        if(merged.length){NEWS_CACHE[type]={data:merged,t:now};cb(merged);}
+        else cb(null);
+      }
+    });
+  });
+}
+
+// 内置降级内容
+const NEWS_POOL=[
+  {title:'全国多地推进新型城镇化建设，提升城市宜居品质',desc:'各地加快城市更新与公共服务设施建设，推进老旧小区改造和一刻钟便民生活圈。',source:'综合',time:''},
+  {title:'教育"双减"政策持续深化，课后服务覆盖率达98%',desc:'各地中小学丰富课后服务内容，推动素质教育发展，学生学业负担明显减轻。',source:'综合',time:''},
+  {title:'我国新能源汽车产销量连续多年位居全球第一',desc:'在技术创新和政策支持带动下，新能源汽车产业链日趋完善，自主品牌竞争力增强。',source:'综合',time:''},
+  {title:'医保跨省结算全面铺开，惠及数亿参保群众',desc:'异地就医直接结算覆盖范围进一步扩大，群众看病报销更方便。',source:'综合',time:''},
+  {title:'国家出台措施促进民营经济发展壮大',desc:'从市场准入、要素获取、法治保障等方面推出系列举措，激发市场活力。',source:'综合',time:''},
+  {title:'乡村振兴成效显著，农村居民收入持续增长',desc:'特色农业、乡村旅游、电商助农等新业态蓬勃发展，城乡差距进一步缩小。',source:'综合',time:''},
+  {title:'人工智能技术加速赋能千行百业',desc:'AI在医疗、教育、制造、服务等领域应用深化，也带来新的就业与伦理思考。',source:'综合',time:''},
+  {title:'我国5G基站总数持续增长，覆盖率提升',desc:'信息基础设施日益完善，5G应用深入生产生活场景，支撑数字经济发展。',source:'综合',time:''},
 ];
 const FIN_NEWS_POOL=[
-  {t:'央行公开市场操作净投放，流动性保持合理充裕',d:'央行通过逆回购等工具调节市场流动性，资金面平稳，市场利率运行在合理区间。',cat:'货币',badge:'央行',color:'blue'},
-  {t:'A股三大指数集体收涨，两市成交额突破万亿',d:'科技、消费板块领涨，北向资金净流入，市场情绪回暖，机构看好结构性机会。',cat:'股市',badge:'A股',color:'red'},
-  {t:'国债收益率曲线趋平，长端利率小幅下行',d:'市场对长期经济预期趋于稳定，机构配置需求增加，债市表现稳健。',cat:'债市',badge:'国债',color:'green'},
-  {t:'人民币汇率企稳，外资连续增持人民币资产',d:'经济基本面支撑下汇率中枢稳定，境外机构增持国内债券和股票，显示信心。',cat:'外汇',badge:'汇率',color:'orange'},
-  {t:'公募基金规模创新高，指数化投资受青睐',d:'ETF产品持续扩容，居民资产配置向权益市场转移，被动投资占比提升。',cat:'基金',badge:'基金',color:'purple'},
-  {t:'大宗商品价格震荡分化，黄金避险需求升温',d:'地缘因素与降息预期推动金价上行，工业金属受需求预期影响波动加大。',cat:'商品',badge:'黄金',color:'orange'},
-  {t:'房地产新政落地，多城下调房贷利率',d:'降低购房成本、释放改善性需求，各地因城施策，市场观望情绪有所缓解。',cat:'楼市',badge:'楼市',color:'blue'},
-  {t:'新能源板块业绩改善，产业链景气度回升',d:'光伏、储能、电动车产业链订单向好，行业出清后龙头优势凸显。',cat:'行业',badge:'新能源',color:'green'},
-  {t:'银行理财规模回升，固收类产品受追捧',d:'低风险偏好下现金管理类和固收+产品规模增长，投资者注重稳健回报。',cat:'理财',badge:'银行',color:'blue'},
-  {t:'北交所交易活跃度提升，专精特新企业受关注',d:'制度优化和市场推广带动流动性改善，中小企业直接融资渠道更畅通。',cat:'股市',badge:'北交所',color:'red'},
+  {title:'央行公开市场操作净投放，流动性保持合理充裕',desc:'央行通过逆回购等工具调节市场流动性，资金面平稳。',source:'财经',time:''},
+  {title:'A股三大指数集体收涨，两市成交额放大',desc:'科技、消费板块领涨，市场情绪回暖，机构看好结构性机会。',source:'财经',time:''},
+  {title:'人民币汇率企稳，外资连续增持人民币资产',desc:'经济基本面支撑下汇率中枢稳定，境外机构显示信心。',source:'财经',time:''},
+  {title:'公募基金规模创新高，指数化投资受青睐',desc:'ETF产品持续扩容，居民资产配置向权益市场转移。',source:'财经',time:''},
+  {title:'大宗商品价格震荡分化，黄金避险需求升温',desc:'地缘因素与降息预期推动金价上行，工业金属波动加大。',source:'财经',time:''},
+  {title:'房地产新政落地，多城下调房贷利率',desc:'降低购房成本、释放改善性需求，各地因城施策。',source:'财经',time:''},
+  {title:'新能源板块业绩改善，产业链景气度回升',desc:'光伏、储能、电动车产业链订单向好，龙头优势凸显。',source:'财经',time:''},
+  {title:'银行理财规模回升，固收类产品受追捧',desc:'低风险偏好下现金管理类和固收+产品规模增长。',source:'财经',time:''},
 ];
-function getTodayFin(){
+// 行情（示例数据，国内接口有CORS限制无法在静态页稳定获取）
+const FIN_MARKET=[
+  {n:'上证指数',base:3289.45},{n:'深证成指',base:10487.32},{n:'创业板指',base:2089.67},
+  {n:'沪深300',base:3845.21},{n:'恒生指数',base:18234.56},{n:'黄金(元/克)',base:568.30},
+  {n:'美元/人民币',base:7.1834},{n:'WTI原油(美元)',base:78.56},
+];
+function getExampleMarket(){
   const seed=dateSeed(todayStr());
-  // 行情：按种子生成当日涨跌（基于基准价的固定波动，一天内稳定）
-  const market=FIN_MARKET.map((m,i)=>{
-    const wave=((seed*7+i*13)%200-100)/1000; // -10% ~ +10%
-    const price=m.base*(1+wave);
-    const chgPct=wave*100;
-    return {...m,price,chgPct};
+  return FIN_MARKET.map((m,i)=>{
+    const wave=((seed*7+i*13)%200-100)/1000;
+    return{...m,price:m.base*(1+wave),chgPct:wave*100};
   });
-  const n=8;const start=seed%FIN_NEWS_POOL.length;
-  let news=[];
-  for(let i=0;i<n;i++)news.push(FIN_NEWS_POOL[(start+i)%FIN_NEWS_POOL.length]);
-  return {market,news};
 }
-function renderFinance(){
-  const {market,news}=getTodayFin();
+
+function renderNews(){
   const now=new Date();
-  $('#finTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+'行情';
-  $('#finList').innerHTML=market.map(m=>{
-    const up=m.chgPct>=0;
-    return `<div class="fin-item">
-      <div class="fin-head">
-        <div class="fin-name">${m.n}<span class="fin-badge tag tag-${m.color}" style="margin-left:4px">${m.badge||''}</span></div>
-        <div class="fin-val">最新</div>
+  $('#newsTime').textContent='加载中…';
+  fetchRSS('news',data=>{
+    const list=(data||NEWS_POOL).slice(0,12);
+    $('#newsTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+'更新'+(data?' · 实时':' · 离线');
+    $('#newsList').innerHTML=list.map((it,i)=>`<div class="news-item">
+      <div class="news-rank ${i===0?'r1':i===1?'r2':i===2?'r3':'rn'}">${i+1}</div>
+      <div class="news-body">
+        <div class="news-title">${it.title}</div>
+        <div class="news-desc">${it.desc}</div>
+        <div class="news-meta"><span class="hot">🔥 热点</span><span>${it.source||'综合'}</span><span>${it.time||''}</span></div>
       </div>
-      <div class="fin-price">
-        <span class="p ${up?'up':'down'}">${m.price.toFixed(m.n.includes('克')||m.n.includes('油')||m.n.includes('人民币')?2:2)}</span>
-        <span class="chg ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(m.chgPct).toFixed(2)}%</span>
-      </div>
-    </div>`;
-  }).join('');
-  // 简化：market里没有badge，重写
+    </div>`).join('');
+  });
+}
+$('#refreshNews').onclick=()=>{NEWS_CACHE.news.t=0;renderNews();toast('正在刷新热点…');};
+
+function renderFinance(){
+  const now=new Date();
+  // 行情（示例）
+  const market=getExampleMarket();
+  $('#finTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+' · 示例数据';
   $('#finList').innerHTML=market.map(m=>{
     const up=m.chgPct>=0;
     return `<div class="fin-item">
       <div class="fin-head">
         <div class="fin-name">${m.n}</div>
-        <div class="fin-val">实时</div>
+        <div class="fin-val">示例</div>
       </div>
       <div class="fin-price">
         <span class="p ${up?'up':'down'}">${m.price.toFixed(2)}</span>
@@ -951,16 +976,20 @@ function renderFinance(){
       </div>
     </div>`;
   }).join('');
-  $('#finNews').innerHTML=news.map((it,i)=>`<div class="news-item">
-    <div class="news-rank ${i===0?'r1':i===1?'r2':i===2?'r3':'rn'}">${i+1}</div>
-    <div class="news-body">
-      <div class="news-title">${it.t}</div>
-      <div class="news-desc">${it.d}</div>
-      <div class="news-meta"><span class="tag tag-${it.color}">${it.badge}</span><span>财经报道</span></div>
-    </div>
-  </div>`).join('');
+  // 财经要闻（真实RSS）
+  fetchRSS('finance',data=>{
+    const list=(data||FIN_NEWS_POOL).slice(0,10);
+    $('#finNews').innerHTML=list.map((it,i)=>`<div class="news-item">
+      <div class="news-rank ${i===0?'r1':i===1?'r2':i===2?'r3':'rn'}">${i+1}</div>
+      <div class="news-body">
+        <div class="news-title">${it.title}</div>
+        <div class="news-desc">${it.desc}</div>
+        <div class="news-meta"><span class="tag tag-orange">${it.source||'财经'}</span><span>${it.time||''}</span></div>
+      </div>
+    </div>`).join('');
+  });
 }
-$('#refreshFin').onclick=()=>{renderFinance();toast('行情已刷新');};
+$('#refreshFin').onclick=()=>{NEWS_CACHE.finance.t=0;renderFinance();toast('正在刷新财经…');};
 
 /* ============================================================
    启动
