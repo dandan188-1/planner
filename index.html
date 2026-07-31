@@ -849,11 +849,12 @@ function speak(text){
 const RSS2JSON='https://api.rss2json.com/v1/api.json?rss_url=';
 const RSS_SOURCES={
   news:[
-    {url:'http://www.people.com.cn/rss/politics.xml',name:'人民网时政'},
-    {url:'http://www.people.com.cn/rss/world.xml',name:'人民网国际'},
+    {url:'https://www.chinanews.com.cn/rss/importnews.xml',name:'中新网·要闻'},
+    {url:'https://www.chinanews.com.cn/rss/china.xml',name:'中新网·时政'},
+    {url:'https://www.chinanews.com.cn/rss/world.xml',name:'中新网·国际'},
   ],
   finance:[
-    {url:'http://www.people.com.cn/rss/finance.xml',name:'人民网财经'},
+    {url:'https://www.chinanews.com.cn/rss/finance.xml',name:'中新网·财经'},
   ]
 };
 // 缓存：避免频繁请求，10 分钟刷新一次
