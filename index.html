@@ -927,18 +927,56 @@ const FIN_NEWS_POOL=[
   {title:'新能源板块业绩改善，产业链景气度回升',desc:'光伏、储能、电动车产业链订单向好，龙头优势凸显。',source:'财经',time:''},
   {title:'银行理财规模回升，固收类产品受追捧',desc:'低风险偏好下现金管理类和固收+产品规模增长。',source:'财经',time:''},
 ];
-// 行情（示例数据，国内接口有CORS限制无法在静态页稳定获取）
-const FIN_MARKET=[
-  {n:'上证指数',base:3289.45},{n:'深证成指',base:10487.32},{n:'创业板指',base:2089.67},
-  {n:'沪深300',base:3845.21},{n:'恒生指数',base:18234.56},{n:'黄金(元/克)',base:568.30},
-  {n:'美元/人民币',base:7.1834},{n:'WTI原油(美元)',base:78.56},
+// 行情：实时获取腾讯财经数据（通过script标签绕过CORS，GBK编码）
+const MARKET_CODES=[
+  {code:'sh000001',name:'上证指数',type:'index'},
+  {code:'sz399001',name:'深证成指',type:'index'},
+  {code:'sz399006',name:'创业板指',type:'index'},
+  {code:'sh000300',name:'沪深300',type:'index'},
+  {code:'hkHSI',name:'恒生指数',type:'hk'},
+  {code:'hf_GC',name:'纽约黄金',type:'hf'},
+  {code:'hf_CL',name:'纽约原油',type:'hf'},
 ];
-function getExampleMarket(){
-  const seed=dateSeed(todayStr());
-  return FIN_MARKET.map((m,i)=>{
-    const wave=((seed*7+i*13)%200-100)/1000;
-    return{...m,price:m.base*(1+wave),chgPct:wave*100};
-  });
+// 降级用基准价（网络失败时）
+const MARKET_FALLBACK={
+  'sh000001':3837,'sz399001':13700,'sz399006':3396,'sh000300':4607,
+  'hkHSI':25800,'hf_GC':4134,'hf_CL':81.4
+};
+let MARKET_CACHE=null,MARKET_TIME=0;
+function fetchMarket(cb){
+  const now=Date.now();
+  if(MARKET_CACHE&&now-MARKET_TIME<CACHE_TTL){cb(MARKET_CACHE,true);return;}
+  const codes=MARKET_CODES.map(m=>m.code).join(',');
+  const s=document.createElement('script');
+  s.charset='GBK';
+  s.src='https://qt.gtimg.cn/q='+codes;
+  let done=false;
+  const finish=(real)=>{
+    if(done)return;done=true;
+    s.remove();
+    const result=MARKET_CODES.map(m=>{
+      const raw=window['v_'+m.code];
+      if(!raw)return{name:m.name,price:MARKET_FALLBACK[m.code],chgPct:0,real:false};
+      if(m.type==='hf'){
+        // 黄金/原油: "现价,涨跌幅,..."
+        const a=raw.split(',');
+        return{name:m.name,price:parseFloat(a[0])||0,chgPct:parseFloat(a[1])||0,real:true};
+      }else{
+        // A股/港股: "~"分隔 [3]=现价 [4]=昨收 [32]=涨跌幅%
+        const a=raw.split('~');
+        const price=parseFloat(a[3])||0;
+        const chg=parseFloat(a[32])||0;
+        return{name:m.name,price,chgPct:chg,real:true};
+      }
+    });
+    const allReal=result.every(r=>r.real);
+    if(allReal){MARKET_CACHE=result;MARKET_TIME=now;}
+    cb(result,allReal);
+  };
+  s.onload=()=>finish(true);
+  s.onerror=()=>finish(false);
+  document.head.appendChild(s);
+  setTimeout(()=>finish(false),8000);
 }
 
 function renderNews(){
@@ -961,22 +999,24 @@ $('#refreshNews').onclick=()=>{NEWS_CACHE.news.t=0;renderNews();toast('正在刷
 
 function renderFinance(){
   const now=new Date();
-  // 行情（示例）
-  const market=getExampleMarket();
-  $('#finTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+' · 示例数据';
-  $('#finList').innerHTML=market.map(m=>{
-    const up=m.chgPct>=0;
-    return `<div class="fin-item">
-      <div class="fin-head">
-        <div class="fin-name">${m.n}</div>
-        <div class="fin-val">示例</div>
-      </div>
-      <div class="fin-price">
-        <span class="p ${up?'up':'down'}">${m.price.toFixed(2)}</span>
-        <span class="chg ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(m.chgPct).toFixed(2)}%</span>
-      </div>
-    </div>`;
-  }).join('');
+  $('#finTime').textContent='加载中…';
+  // 行情（实时）
+  fetchMarket((market,isReal)=>{
+    $('#finTime').textContent=pad(now.getHours())+':'+pad(now.getMinutes())+(isReal?' · 实时行情':' · 延时数据');
+    $('#finList').innerHTML=market.map(m=>{
+      const up=m.chgPct>=0;
+      return `<div class="fin-item">
+        <div class="fin-head">
+          <div class="fin-name">${m.name}</div>
+          <div class="fin-val">${m.real?'实时':'估算'}</div>
+        </div>
+        <div class="fin-price">
+          <span class="p ${up?'up':'down'}">${m.price.toFixed(2)}</span>
+          <span class="chg ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(m.chgPct).toFixed(2)}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  });
   // 财经要闻（真实RSS）
   fetchRSS('finance',data=>{
     const list=(data||FIN_NEWS_POOL).slice(0,10);
@@ -990,7 +1030,7 @@ function renderFinance(){
     </div>`).join('');
   });
 }
-$('#refreshFin').onclick=()=>{NEWS_CACHE.finance.t=0;renderFinance();toast('正在刷新财经…');};
+$('#refreshFin').onclick=()=>{NEWS_CACHE.finance.t=0;MARKET_TIME=0;renderFinance();toast('正在刷新行情…');};
 
 /* ============================================================
    启动
