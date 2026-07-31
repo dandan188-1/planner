@@ -1,0 +1,15 @@
+{
+  "name": "规划工作台",
+  "short_name": "规划台",
+  "description": "中年人的每日计划、记账、阅读、英语、时事与财经规划工作台",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f4ef",
+  "theme_color": "#5b9279",
+  "icons": [
+    { "src": "icon192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
