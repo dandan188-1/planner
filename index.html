@@ -749,12 +749,24 @@ renderCatGrid();
    阅读：6本必读
 ============================================================ */
 const BOOKS=[
-  {id:1,title:'《活着》',author:'余华',pages:240,color:'#c97b6e',total:240,desc:'一个普通人在大时代中的人生苦难史，余华代表作。'},
-  {id:2,title:'《百年孤独》',author:'加西亚·马尔克斯',pages:360,color:'#8a85b4',total:360,desc:'马孔多镇布恩迪亚家族七代人的魔幻史诗。'},
-  {id:3,title:'《三体》',author:'刘慈欣',pages:400,color:'#4a6b7c',total:400,desc:'中国科幻里程碑，文明与宇宙的壮阔叙事。'},
-  {id:4,title:'《人类简史》',author:'尤瓦尔·赫拉利',pages:440,color:'#d99a6c',total:440,desc:'从认知革命到智人称霸地球的全景史。'},
-  {id:5,title:'《心流》',author:'米哈里·契克森米哈赖',pages:280,color:'#5b9279',total:280,desc:'如何在专注中找到幸福与生命意义。'},
-  {id:6,title:'《非暴力沟通》',author:'马歇尔·卢森堡',pages:200,color:'#7a9cb0',total:200,desc:'用观察、感受、需要、请求改善人际关系。'}
+  {id:1,title:'《活着》',author:'余华',pages:240,color:'#c97b6e',total:240,desc:'一个普通人在大时代中的人生苦难史，余华代表作。',
+   summary:'地主少爷福贵嗜赌成性，终于赌光了家业一贫如洗。他的人生不断经历苦难：父亲气死、母亲病死、儿子抽血而亡、女儿难产、妻子病逝、女婿事故、外孙撑死。最后只剩他和一头老牛相依为命，却依然平静地活着。余华用极度克制的笔触，写尽了中国人在苦难中坚韧的生命力。',
+   review:'"以笑的方式哭，在死亡的伴随下活着。"——这是余华对本书的诠释。本书曾获意大利格林扎纳·卡佛文学奖，改编电影获戛纳评委会大奖，全球销量超2000万册。'},
+  {id:2,title:'《百年孤独》',author:'加西亚·马尔克斯',pages:360,color:'#8a85b4',total:360,desc:'马孔多镇布恩迪亚家族七代人的魔幻史诗。',
+   summary:'布恩迪亚家族七代人的传奇故事在马孔多小镇上演：吉普赛人带来的磁铁、失眠瘟疫、香蕉公司大屠杀、持续四年十一个月零两天的雨……家族每一代都在重复相似的名字和命运，直到最后一代在羊皮卷的预言中破译了家族的全部历史。魔幻现实主义文学的巅峰之作。',
+   review:'"多年以后，面对行刑队，奥雷里亚诺·布恩迪亚上校将会回想起父亲带他去见识冰块的那个遥远的下午。"——文学史上最著名的开篇之一。本书获1982年诺贝尔文学奖，被誉为"20世纪用西班牙语写作的最杰出的长篇小说"。'},
+  {id:3,title:'《三体》',author:'刘慈欣',pages:400,color:'#4a6b7c',total:400,desc:'中国科幻里程碑，文明与宇宙的壮阔叙事。',
+   summary:'文化大革命中，天体物理学家叶文洁向宇宙发出信号，引来三体文明对地球的觊觎。三体人用智子锁死人类基础科学，人类则在面壁者计划中寻找反击之路。从红岸基地到末日战役，从黑暗森林法则到宇宙归零，刘慈欣用硬核想象力构筑了一个跨越数百年的宇宙史诗。',
+   review:'"宇宙就是一座黑暗森林，每个文明都是带枪的猎人。"本书获第73届雨果奖最佳长篇小说奖，是亚洲作家首次获此殊荣。奥巴马、扎克伯格、雷军等公开推荐，被誉为"单枪匹马把中国科幻文学提升到世界级水平"。'},
+  {id:4,title:'《人类简史》',author:'尤瓦尔·赫拉利',pages:440,color:'#d99a6c',total:440,desc:'从认知革命到智人称霸地球的全景史。',
+   summary:'七万年前，智人还只是非洲一隅的边缘物种。认知革命让人类学会讲故事、大规模协作；农业革命让我们定居却可能更辛苦；科学革命让我们掌握巨大力量却也可能走向自我毁灭。赫拉利以宏大视角追问：人类究竟想要什么？我们变得更幸福了吗？未来将走向何方？',
+   review:'"我们从一种不起眼的动物，变成了地球的主人。"本书全球销量超2300万册，被翻译成60多种语言，比尔·盖茨、扎克伯格、罗振宇等鼎力推荐，近十年最具影响力的非虚构作品之一。'},
+  {id:5,title:'《心流》',author:'米哈里·契克森米哈赖',pages:280,color:'#5b9279',total:280,desc:'如何在专注中找到幸福与生命意义。',
+   summary:'为什么有人在攀岩、下棋、手术中能体验到极致的快乐？心理学家米哈里研究发现，当挑战与技能匹配、目标清晰、反馈即时时，人会进入"心流"状态——忘记时间、自我消失、充满掌控感。本书系统阐述心流的触发条件，并指导如何在工作、休闲、人际关系中创造心流体验。',
+   review:'"最优体验的产生，是因为我们全身心投入一个与自己能力相当的活动。"本书是积极心理学奠基之作，全球畅销30余年，被清华彭凯平、樊登等学者反复推荐，理解幸福与专注的经典必读。'},
+  {id:6,title:'《非暴力沟通》',author:'马歇尔·卢森堡',pages:200,color:'#7a9cb0',total:200,desc:'用观察、感受、需要、请求改善人际关系。',
+   summary:'为什么亲密的人反而最容易互相伤害？卢森堡博士提出非暴力沟通四要素：观察（而非评判）、感受（而非想法）、需要（而非指责）、请求（而非命令）。通过大量真实案例——夫妻冲突、亲子教育、职场谈判甚至巴以冲突——展示如何用爱的语言化解敌意，建立深层连接。',
+   review:'"不带评论的观察，是人类智力的最高形式。"——卢森堡。本书是全球沟通类经典，销量超百万册，被联合国教科文组织列为非暴力教育参考书，在50多个国家开设工作坊，深刻影响了教育、心理、调解等领域。'}
 ];
 function getBookData(){
   const d=LS.get('bookData',{});
@@ -778,9 +790,9 @@ function renderBooks(){
     let status=`<span class="book-status ${bd.finished?'finished':(read>0?'reading':'new')}">${bd.finished?'已读完':(read>0?'阅读中':'未开始')}</span>`;
     return `<div class="card book-item">
       <div class="book-head">
-        <div class="book-cover" style="background:linear-gradient(135deg,${b.color},${b.color}aa)">${b.title.replace('《','').replace('》','').slice(0,3)}</div>
+        <div class="book-cover book-click" data-id="${b.id}" style="background:linear-gradient(135deg,${b.color},${b.color}aa);cursor:pointer">${b.title.replace('《','').replace('》','').slice(0,3)}</div>
         <div class="book-meta">
-          <div class="bm-title">${b.title}${status}</div>
+          <div class="bm-title book-click" data-id="${b.id}" style="cursor:pointer">${b.title}${status}</div>
           <div class="bm-author">${b.author} · ${b.total}页</div>
           <div class="bm-stat">已读 <b>${read}</b> 页 · ${p}%</div>
         </div>
@@ -791,9 +803,14 @@ function renderBooks(){
         <div class="mini-btn add" data-act="add" data-id="${b.id}">+10页</div>
         <div class="mini-btn done ${bd.finished?'active':''}" data-act="done" data-id="${b.id}">${bd.finished?'已读完':'读完'}</div>
         <div class="mini-btn reset" data-act="reset" data-id="${b.id}">重置</div>
+        <div class="mini-btn detail" data-id="${b.id}" style="background:var(--primary-light);color:var(--primary)">详情</div>
       </div>
     </div>`;
   }).join('');
+  $$('.book-click,.mini-btn.detail').forEach(el=>el.onclick=(e)=>{
+    e.stopPropagation();
+    openBookDetail(parseInt(el.dataset.id));
+  });
   $$('#bookList .mini-btn').forEach(el=>el.onclick=()=>{
     const id=parseInt(el.dataset.id);const act=el.dataset.act;
     const d=getBookData();
@@ -1041,6 +1058,34 @@ function openDetail(idx,list){
 function closeDetail(){$('#detailMask').classList.remove('open');document.body.style.overflow='';}
 $('#detailClose').onclick=closeDetail;
 $('#detailMask').onclick=e=>{if(e.target.id==='detailMask')closeDetail();};
+
+/* 书籍详情弹层（复用新闻弹层DOM） */
+function openBookDetail(id){
+  const b=BOOKS.find(x=>x.id===id);
+  if(!b)return;
+  const bd=getBookData()[id];
+  const read=Math.min(bd.read,b.total);
+  const weread='https://weread.qq.com/web/search/books?keyword='+encodeURIComponent(b.title.replace('《','').replace('》',''));
+  const douban='https://search.douban.com/book/subject_search?search_text='+encodeURIComponent(b.title+' '+b.author);
+  $('#detailTitle').textContent=b.title;
+  $('#detailMeta').innerHTML=`<span class="tag tag-purple">${b.author}</span><span class="tag tag-orange">${b.total}页</span><span>已读 ${read}页 · ${Math.round(read/b.total*100)}%</span>`;
+  $('#detailContent').innerHTML=`<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">📖 内容简介</div><div style="margin-bottom:16px">${b.summary||b.desc}</div><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">✨ 名家点评</div><div style="color:var(--text-3);font-style:italic;border-left:3px solid var(--primary);padding-left:10px">${b.review||''}</div>`;
+  // 两个阅读入口
+  const link=$('#detailLink');
+  link.href=weread;link.style.display='inline-block';link.textContent='微信读书阅读';link.target='_blank';link.rel='noopener';
+  // 豆瓣按钮动态插入
+  let dbBtn=$('#detailDouban');
+  if(!dbBtn){
+    dbBtn=document.createElement('a');
+    dbBtn.id='detailDouban';
+    dbBtn.className='detail-close';
+    dbBtn.style.cssText='text-decoration:none;display:inline-block;background:#eaf3ee;color:var(--green);padding:11px 16px;border-radius:var(--radius-sm);font-size:14px;font-weight:500';
+    link.parentNode.insertBefore(dbBtn,link.nextSibling);
+  }
+  dbBtn.href=douban;dbBtn.textContent='豆瓣查看';dbBtn.target='_blank';dbBtn.rel='noopener';
+  $('#detailMask').classList.add('open');
+  document.body.style.overflow='hidden';
+}
 
 function renderNews(){
   const now=new Date();
